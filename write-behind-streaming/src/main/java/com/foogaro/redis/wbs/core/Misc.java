@@ -1,8 +1,12 @@
 package com.foogaro.redis.wbs.core;
 
+import com.redis.om.spring.annotations.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.core.RedisHash;
+
+import java.lang.annotation.Annotation;
 
 public class Misc {
 
@@ -19,6 +23,27 @@ public class Misc {
 
     public final static String CONSUMER_GROUP_SUFFIX = "_group";
     public final static String CONSUMER_SUFFIX = "_consumer";
+
+    public static String getEntityKeyPrefix(final Class<?> entityClass) {
+        try {
+//            Class<? extends Annotation> redisHashClass = (Class<? extends Annotation>) Class.forName("org.springframework.data.redis.core.RedisHash");
+            if (entityClass.isAnnotationPresent(RedisHash.class)) {
+                Annotation annotation = entityClass.getAnnotation(RedisHash.class);
+                return (String) RedisHash.class.getMethod("value").invoke(annotation);
+            }
+            
+//            Class<? extends Annotation> documentClass = (Class<? extends Annotation>) Class.forName("com.redis.om.spring.annotations.Document");
+            if (entityClass.isAnnotationPresent(Document.class)) {
+                Annotation annotation = entityClass.getAnnotation(Document.class);
+                return (String) Document.class.getMethod("value").invoke(annotation);
+            }
+//        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
+        } catch (NoSuchMethodException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
+            logger.debug("Annotation class not found or error accessing annotation value: {}", e.getMessage());
+        }
+
+        return entityClass.getSimpleName().toLowerCase();
+    }
 
     public static String getStreamKey(final Class<?> entityClass) {
         return STREAM_KEY_PREFIX + entityClass.getSimpleName().toLowerCase();

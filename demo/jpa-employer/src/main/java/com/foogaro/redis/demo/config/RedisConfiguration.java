@@ -11,7 +11,6 @@ import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
-//@EnableRedisRepositories(basePackages = "com.foogaro.redis.demo.repository.redis")
 public class RedisConfiguration {
 
     @Value("${spring.data.redis.host}") private String redis_host;

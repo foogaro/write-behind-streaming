@@ -1,6 +1,8 @@
 package com.foogaro.redis.demo.entity;
 
-import com.foogaro.redis.wbs.core.annotation.WriteBehind;
+import com.foogaro.redis.wbs.core.annotation.CachingPatterns;
+import com.foogaro.redis.wbs.core.service.CachingPattern;
+import com.redis.om.spring.annotations.Document;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -10,7 +12,8 @@ import org.springframework.data.redis.core.RedisHash;
 @RedisHash("employer")
 @Entity
 @Table(name = "employers")
-@WriteBehind
+@CachingPatterns(patterns = {CachingPattern.WRITE_BEHIND, CachingPattern.CACHE_ASIDE})
+@Document
 public class Employer {
 
     @Id

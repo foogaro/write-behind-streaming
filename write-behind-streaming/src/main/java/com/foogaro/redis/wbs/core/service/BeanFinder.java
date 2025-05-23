@@ -1,6 +1,5 @@
 package com.foogaro.redis.wbs.core.service;
 
-import com.foogaro.redis.wbs.core.annotation.WriteBehind;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -20,26 +19,61 @@ public class BeanFinder {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private ListableBeanFactory listableBeanFactory;
+//    private final ListableBeanFactory listableBeanFactory;
+    private Map<String, ?> allBeans;
 
     public BeanFinder(ListableBeanFactory listableBeanFactory) {
-        this.listableBeanFactory = listableBeanFactory;
+//        this.listableBeanFactory = listableBeanFactory;
+        this.allBeans = listableBeanFactory.getBeansOfType(Object.class);
     }
 
-    @SuppressWarnings("unchecked")
     public <T> List<Repository<T, ?>> findRepositoriesForEntity(Class<T> entityClass, Class<?> repositoryClass) {
-        Map<String, ? extends Object> repositoryBeans = listableBeanFactory.getBeansOfType(repositoryClass);
-
-        return repositoryBeans.values()
+//        Map<String, ? extends Object> repositoryBeans = listableBeanFactory.getBeansOfType(repositoryClass);
+        return allBeans.values()
                 .stream()
                 .filter(bean -> bean instanceof Repository)
                 .map(bean -> (Repository<T, ?>) bean)
                 .collect(Collectors.toList());
     }
 
-    public Map<String, Object> findEntities() {
-        Map<String, Object> writeBehindBeans = listableBeanFactory.getBeansWithAnnotation(WriteBehind.class);
-        return writeBehindBeans;
+    @SuppressWarnings("unchecked")
+    public <T> List<Repository<T, ?>> findRepositoriesForEntity(Class<?> repositoryClass) {
+//        Map<String, ? extends Object> repositoryBeans = listableBeanFactory.getBeansOfType(repositoryClass);
+        return allBeans.values()
+                .stream()
+                .filter(bean -> bean instanceof Repository)
+                .map(bean -> (Repository<T, ?>) bean)
+                .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> List<Repository<T, ?>> findRepositoriesForEntity(String repositoryClassName) {
+//        allBeans = listableBeanFactory.getBeansOfType(Object.class);
+        List<Repository<T, ?>> repositories = allBeans.values()
+                .stream()
+                .filter(bean -> {
+                    Class<?> beanClass = bean.getClass();
+                    // Check if the bean is a Spring Data JPA proxy
+                    boolean isProxy = beanClass.getName().contains("$Proxy") || 
+                                    beanClass.getName().contains("$JdkDynamicAopProxy");
+                    
+                    // Get the actual interface class if it's a proxy
+                    Class<?> actualClass = isProxy ? 
+                        Arrays.stream(beanClass.getInterfaces())
+                            .filter(i -> i.getSimpleName().equals(repositoryClassName))
+                            .findFirst()
+                            .orElse(beanClass) : 
+                        beanClass;
+                    
+                    boolean nameMatches = actualClass.getSimpleName().equals(repositoryClassName);
+                    boolean isRepository = Repository.class.isAssignableFrom(actualClass);
+                    logger.trace("Bean: {} - Is proxy: {}, Actual class: {}, Name matches: {}, Is repository: {}",
+                        beanClass.getName(), isProxy, actualClass.getName(), nameMatches, isRepository);
+                    return nameMatches && isRepository;
+                })
+                .map(bean -> (Repository<T, ?>) bean)
+                .collect(Collectors.toList());
+        return repositories;
     }
 
     public <T> Class<?> getIdType(Repository<T, ?> repository) {

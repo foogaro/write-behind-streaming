@@ -90,7 +90,9 @@ public abstract class AbstractProcessor<T, R> implements Processor<T, R> {
     }
 
     public List<Repository<T, ?>> getRepositories() {
-        return getRepositoryFinder().findRepositoriesForEntity(getEntityClass(), getRepositoryClass());
+//        return getRepositoryFinder().findRepositoriesForEntity(getEntityClass(), getRepositoryClass());
+//        return getRepositoryFinder().findRepositoriesForEntity(getRepositoryClass());
+        return getRepositoryFinder().findRepositoriesForEntity(getRepositoryClass().getSimpleName());
     }
 
     public void process(final MapRecord<String, String, String> record) throws ProcessMessageException {
@@ -99,8 +101,11 @@ public abstract class AbstractProcessor<T, R> implements Processor<T, R> {
         repositories.forEach(repo -> {
             try {
                 String content = record.getValue().get(EVENT_CONTENT_KEY);
+                String operation = record.getValue().get(EVENT_OPERATION_KEY);
                 logger.debug("Processing message: {}", record.getId());
-                if (Misc.Operation.DELETE.getValue().equals(record.getValue().get(EVENT_OPERATION_KEY))) {
+                logger.debug("Processing EVENT_CONTENT_KEY: {}", content);
+                logger.debug("Processing EVENT_OPERATION_KEY: {}", operation);
+                if (Misc.Operation.DELETE.getValue().equals(operation)) {
                     logger.trace("Deleting message: {}", record.getId());
                     getRepositoryFinder().executeIdOperation(repo, content, CrudRepository::deleteById);
                     logger.trace("Deleted message: {}", record.getId());

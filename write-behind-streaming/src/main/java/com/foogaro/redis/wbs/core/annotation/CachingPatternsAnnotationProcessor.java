@@ -22,9 +22,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@SupportedAnnotationTypes("com.foogaro.redis.wbs.core.annotation.WriteBehind")
+@SupportedAnnotationTypes("com.foogaro.redis.wbs.core.annotation.CachingPatterns")
 //@SupportedSourceVersion(SourceVersion.RELEASE_21)
-public class WriteBehindAnnotationProcessor extends AbstractProcessor {
+public class CachingPatternsAnnotationProcessor extends AbstractProcessor {
 
     private Types typeUtils;
     private Elements elementUtils;
@@ -46,7 +46,7 @@ public class WriteBehindAnnotationProcessor extends AbstractProcessor {
 
         processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.NOTE,
-                "Write Behind ⚞☲⚟ Initialized\n"
+                "Caching Patterns ⚞☲⚟ Initialized\n"
         );
     }
 
@@ -54,19 +54,19 @@ public class WriteBehindAnnotationProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.NOTE,
-                        "Write Behind ⚞☲⚟ Processing\n"
+                        "Caching Patterns ⚞☲⚟ Processing\n"
         );
 
-        Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(WriteBehind.class);
+        Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(CachingPatterns.class);
         processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.NOTE,
-                "Number of elements annotated with @WriteBehind: " + elements.size()
+                "Number of elements annotated with @CachingPatterns: " + elements.size()
         );
 
         try {
-            for (Element element : roundEnv.getElementsAnnotatedWith(WriteBehind.class)) {
+            for (Element element : elements) {
                 if (element.getKind() != ElementKind.CLASS) {
-                    error(element, "Only classes can be annotated with @WriteBehind");
+                    error(element, "Only classes can be annotated with @CachingPatterns");
                     continue;
                 }
 
@@ -94,7 +94,7 @@ public class WriteBehindAnnotationProcessor extends AbstractProcessor {
                 }
             }
         } catch (Exception e) {
-            error(null, "Error processing @WriteBehind annotation: %s", e.getMessage());
+            error(null, "Error processing @CachingPatterns annotation: %s", e.getMessage());
         }
         return true;
     }

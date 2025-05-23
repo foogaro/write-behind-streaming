@@ -48,3 +48,5 @@ curl -X PUT http://localhost:8080/api/employers/1 \
 }'
 
 curl -X DELETE http://localhost:8080/api/employers/3
+
+INSERT INTO employers (id, address, email, name, phone) VALUES (2, 'Via Roma 2', 'luigi.2@redis.com', 'Luigi', '2222222222');

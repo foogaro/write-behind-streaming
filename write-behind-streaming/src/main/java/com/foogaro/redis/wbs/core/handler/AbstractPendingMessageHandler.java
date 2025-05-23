@@ -29,8 +29,8 @@ public abstract class AbstractPendingMessageHandler<T, R> implements MessageHand
     protected long MAX_RETENTION;
     @Value("${wb.stream.listener.pel.batch-size:50}")
     protected int BATCH_SIZE;
-    @Value("${wb.stream.listener.pel.fixed-delay:30000}")
-    protected final long fixedDelay = 30000;
+    @Value("${wb.stream.listener.pel.fixed-delay:300000}")
+    protected final long fixedDelay = 300000;
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;

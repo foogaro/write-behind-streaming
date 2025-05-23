@@ -1,1 +1,1 @@
-com.foogaro.redis.wbs.core.annotation.WriteBehindAnnotationProcessor
+com.foogaro.redis.wbs.core.annotation.CachingPatternsAnnotationProcessor

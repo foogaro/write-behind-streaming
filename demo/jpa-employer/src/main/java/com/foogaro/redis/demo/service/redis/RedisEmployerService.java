@@ -18,9 +18,9 @@ public class RedisEmployerService extends WBSService<Employer> {
         return repository.findAll();
     }
 
-    public Optional<Employer> findById(Long id) {
-        return repository.findById(id);
-    }
+//    public Optional<Employer> findById(Long id) {
+//        return repository.findById(id);
+//    }
 
     public Employer findByEmail(String email) {
         return repository.findByEmail(email);

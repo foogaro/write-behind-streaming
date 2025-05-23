@@ -1,8 +1,12 @@
 package com.foogaro.redis.wbs.core.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foogaro.redis.wbs.core.service.AnnotationFinder;
+import com.foogaro.redis.wbs.core.service.BeanFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -16,7 +20,6 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
-
 import java.time.Duration;
 
 @Configuration
@@ -55,7 +58,21 @@ public class WBSConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return objectMapper;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public BeanFinder beanFinder(ListableBeanFactory listableBeanFactory) {
+        return new BeanFinder(listableBeanFactory);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public AnnotationFinder annotationFinder() {
+        return new AnnotationFinder();
     }
 
     @Bean
