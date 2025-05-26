@@ -1,5 +1,7 @@
 package com.foogaro.redis.wbs.core.annotation;
 
+import com.foogaro.redis.wbs.core.service.AnnotationFinder;
+import com.foogaro.redis.wbs.core.service.CachingPattern;
 import com.palantir.javapoet.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.CrudRepository;
@@ -18,6 +20,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -71,8 +74,8 @@ public class CachingPatternsAnnotationProcessor extends AbstractProcessor {
                 }
 
                 TypeElement entityElement = (TypeElement) element;
-                String packageName = elementUtils.getPackageOf(entityElement).getQualifiedName().toString();
                 String className = entityElement.getSimpleName().toString();
+                String packageName = elementUtils.getPackageOf(entityElement).getQualifiedName().toString() + "." + className.toLowerCase();
 
                 // Finds all repos managing the entity
                 Set<TypeElement> repositories = findRepositoriesForEntity(roundEnv, entityElement);
@@ -83,15 +86,34 @@ public class CachingPatternsAnnotationProcessor extends AbstractProcessor {
                 }
 
                 // Create the classes for each repo found
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"Generating StreamListener(s), Processors(s), ProcessOrchestrator(s) and PendingMessageHandler(s)");
                 for (TypeElement repository : repositories) {
                     String repositoryType = repository.getSimpleName().toString();
                     String repositoryPrefix = getRepositoryPrefix(repositoryType);
 
                     generateStreamListener(packageName, className, entityElement, repository, repositoryPrefix);
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"\tStreamListener for: " + repository);
                     generateProcessor(packageName, className, entityElement, repository, repositoryPrefix);
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"\tProcessor for: " + repository);
                     generateProcessOrchestrator(packageName, className, entityElement, repository, repositoryPrefix);
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"\tProcessOrchestrator for: " + repository);
                     generatePendingMessageHandler(packageName, className, entityElement, repository, repositoryPrefix);
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"\tPendingMessageHandler for: " + repository);
                 }
+
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"Generating KeyExpirationListener(s)");
+                // Generate the key expiration listener for each element found, if has CachingPattern.REFRESH_AHEAD
+                Arrays.stream(element.getAnnotation(CachingPatterns.class).patterns())
+                        .filter(pattern -> pattern.getValue() == CachingPattern.REFRESH_AHEAD.getValue())
+                        .findFirst()
+                        .ifPresent(pattern -> {
+                            generateKeyExpirationListener(packageName, className, entityElement);
+                            processingEnv.getMessager().printMessage(
+                                    Diagnostic.Kind.NOTE, "\tKeyExpirationListener for: " + entityElement
+                                    + " | Package: " + packageName
+                                    + " | Class: " + className
+                            );
+                        });
             }
         } catch (Exception e) {
             error(null, "Error processing @CachingPatterns annotation: %s", e.getMessage());
@@ -382,6 +404,57 @@ public class CachingPatternsAnnotationProcessor extends AbstractProcessor {
                 .build();
 
         writeJavaFile(packageName + ".handler", handler);
+    }
+
+    private void generateKeyExpirationListener(String packageName, String className,
+                                               TypeElement entityElement) {
+        String listenerClassName = className + "KeyExpirationListener";
+
+        // Create the superclass type with generic parameters
+        TypeName superclass = ParameterizedTypeName.get(
+                ClassName.get("com.foogaro.redis.wbs.core.listener", "AbstractKeyExpirationListener"),
+                TypeName.get(entityElement.asType())
+        );
+
+        // Create the service field
+        FieldSpec serviceField = FieldSpec.builder(
+                        ParameterizedTypeName.get(
+                                ClassName.get("com.foogaro.redis.wbs.core.service", "WBSService"),
+                                TypeName.get(entityElement.asType())
+                        ),
+                        "service",
+                        Modifier.PROTECTED)
+                .addAnnotation(Autowired.class)
+                .build();
+
+        // Create the getService method
+        MethodSpec getServiceMethod = MethodSpec.methodBuilder("getService")
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PROTECTED)
+                .returns(serviceField.type())
+                .addStatement("return service")
+                .build();
+
+        // Create the getKeyPrefix method
+        MethodSpec getKeyPrefixMethod = MethodSpec.methodBuilder("getKeyPrefix")
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PROTECTED)
+                .returns(String.class)
+                .addStatement("return \"$L:\"", className.toLowerCase())
+                .build();
+
+        // Create the class
+        TypeSpec keyExpirationListener = TypeSpec.classBuilder(listenerClassName)
+                .addModifiers(Modifier.PUBLIC)
+                .superclass(superclass)
+                .addAnnotation(Component.class)
+                .addField(serviceField)
+                .addMethod(getServiceMethod)
+                .addMethod(getKeyPrefixMethod)
+                .build();
+
+        // Write the file
+        writeJavaFile(packageName + ".listener", keyExpirationListener);
     }
 
     private void writeJavaFile(String packageName, TypeSpec typeSpec) {

@@ -12,7 +12,7 @@ import org.springframework.data.redis.core.RedisHash;
 @RedisHash("employer")
 @Entity
 @Table(name = "employers")
-@CachingPatterns(patterns = {CachingPattern.WRITE_BEHIND, CachingPattern.CACHE_ASIDE})
+@CachingPatterns(patterns = {CachingPattern.WRITE_BEHIND, CachingPattern.CACHE_ASIDE, CachingPattern.REFRESH_AHEAD})
 @Document
 public class Employer {
 
