@@ -1,7 +1,6 @@
 package com.foogaro.redis.wbs.core.service;
 
 import com.foogaro.redis.wbs.core.annotation.CachingPatterns;
-import com.foogaro.redis.wbs.core.service.CachingPattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

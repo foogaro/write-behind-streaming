@@ -72,18 +72,6 @@ public class Misc {
         }
     }
 
-//    public static MapRecord<String, String, String> convertMapRecord(MapRecord<String, Object, Object> record) {
-//        Map<String, String> convertedMap = new HashMap<>();
-//        record.getValue().forEach((k, v) -> {
-//            convertedMap.put(String.valueOf(k),String.valueOf(v));
-//        });
-//
-//        return StreamRecords.newRecord()
-//                .withId(record.getId())
-//                .ofMap(convertedMap)
-//                .withStreamKey(record.getStream());
-//    }
-
     public enum Operation {
         CREATE("CREATE"),
         READ("READ"),

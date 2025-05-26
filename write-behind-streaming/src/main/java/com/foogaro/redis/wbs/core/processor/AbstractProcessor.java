@@ -41,8 +41,8 @@ public abstract class AbstractProcessor<T, R> implements Processor<T, R> {
 
     protected final MapRecord<String, String, String> record;
     protected int priority;
-    private Class<T> entityClass;
-    private Class<R> repositoryClass;
+    private final Class<T> entityClass;
+    private final Class<R> repositoryClass;
 
     @SuppressWarnings("unchecked")
     protected AbstractProcessor() {

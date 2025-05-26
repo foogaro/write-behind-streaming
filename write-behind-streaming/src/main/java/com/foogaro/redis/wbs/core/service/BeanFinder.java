@@ -25,6 +25,7 @@ public class BeanFinder {
     public BeanFinder(ListableBeanFactory listableBeanFactory) {
 //        this.listableBeanFactory = listableBeanFactory;
         this.allBeans = listableBeanFactory.getBeansOfType(Object.class);
+        logger.debug("Initialized BeanFinder with {} beans", allBeans.size());
     }
 
     public <T> List<Repository<T, ?>> findRepositoriesForEntity(Class<T> entityClass, Class<?> repositoryClass) {
@@ -44,6 +45,79 @@ public class BeanFinder {
                 .filter(bean -> bean instanceof Repository)
                 .map(bean -> (Repository<T, ?>) bean)
                 .collect(Collectors.toList());
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> List<WBSService<T>> findServiceByServiceClass(Class<?> serviceClass) {
+        logger.debug("Finding service for class: {}", serviceClass.getSimpleName());
+        logger.debug("Looking for service with name: {}", serviceClass.getSimpleName());
+        
+        List<WBSService<T>> services = allBeans.values()
+                .stream()
+                .filter(bean -> {
+                    Class<?> beanClass = bean.getClass();
+                    boolean isProxy = beanClass.getName().contains("$Proxy") ||
+                                    beanClass.getName().contains("$JdkDynamicAopProxy");
+                    
+                    // Get the actual class, handling both proxy and non-proxy cases
+                    Class<?> actualClass = isProxy ?
+                        Arrays.stream(beanClass.getInterfaces())
+                            .filter(i -> i.getSimpleName().equals(serviceClass.getSimpleName()))
+                            .findFirst()
+                            .orElse(beanClass) : 
+                        beanClass;
+                    
+                    // Check if it's a WBSService
+                    boolean isService = WBSService.class.isAssignableFrom(actualClass);
+                    
+                    // For generic types, we need to check the raw type name
+                    String actualClassName = actualClass.getSimpleName();
+                    String serviceClassName = serviceClass.getSimpleName();
+                    boolean nameMatches = actualClassName.equals(serviceClassName);
+                    
+                    // Log detailed information about the bean
+                    logger.debug("Bean: {} - Is proxy: {}, Actual class: {}, Is service: {}, Name matches: {}",
+                        beanClass.getName(), isProxy, actualClass.getName(), isService, nameMatches);
+                    
+                    // If it's a proxy, also log the interfaces
+                    if (isProxy) {
+                        logger.debug("Bean interfaces: {}", 
+                            Arrays.stream(beanClass.getInterfaces())
+                                .map(Class::getName)
+                                .collect(Collectors.joining(", ")));
+                    }
+                    
+                    // Check if the bean is a WBSService and matches the service class name
+                    return isService && (nameMatches || actualClass.getName().equals(serviceClass.getName()));
+                })
+                .map(bean -> (WBSService<T>) bean)
+                .collect(Collectors.toList());
+        
+        if (services.isEmpty()) {
+            logger.warn("No service found for class: {}. Available beans: {}", 
+                serviceClass.getSimpleName(),
+                allBeans.keySet().stream()
+                    .filter(name -> name.contains("Service"))
+                    .collect(Collectors.joining(", ")));
+            
+            // Log all WBSService instances
+            logger.debug("All WBSService instances: {}", 
+                allBeans.values().stream()
+                    .filter(bean -> bean instanceof WBSService)
+                    .map(bean -> bean.getClass().getName())
+                    .collect(Collectors.joining(", ")));
+            
+            // Log all beans that might be services
+            logger.debug("All potential service beans: {}", 
+                allBeans.entrySet().stream()
+                    .filter(entry -> entry.getKey().contains("Service"))
+                    .map(entry -> entry.getKey() + " -> " + entry.getValue().getClass().getName())
+                    .collect(Collectors.joining(", ")));
+        } else {
+            logger.debug("Found {} services for class: {}", services.size(), serviceClass.getSimpleName());
+        }
+        
+        return services;
     }
 
     @SuppressWarnings("unchecked")

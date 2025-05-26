@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.foogaro.redis.wbs.core.service.AnnotationFinder;
 import com.foogaro.redis.wbs.core.service.BeanFinder;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -16,16 +17,19 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
+import redis.clients.jedis.Jedis;
+
 import java.time.Duration;
 
 @Configuration
 public class WBSConfiguration {
 
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Value("${spring.data.redis.host}") private String redis_host;
     @Value("${spring.data.redis.port}") private Integer redis_port;
@@ -89,6 +93,56 @@ public class WBSConfiguration {
         logger.debug("Created StreamMessageListenerContainer: {}", streamMessageListenerContainer);
         return streamMessageListenerContainer;
     }
+
+    @Bean
+    public Object configureRedisKeyExpirationEvents(Jedis jedis) {
+        return new Object() {
+            @PostConstruct
+            public void init() {
+                String result = jedis.configSet("notify-keyspace-events", "Ex");
+                logger.debug("Redis key expiration events configuration result: " + result);
+            }
+        };
+    }
+
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(
+            JedisConnectionFactory redisConnectionFactory) {
+        logger.debug("Creating RedisMessageListenerContainer");
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(redisConnectionFactory);
+//        container.addMessageListener(employerKeyExpirationListener, new PatternTopic("__keyevent@*__:expired"));
+        logger.debug("Created RedisMessageListenerContainer");
+        return container;
+    }
+
+//    @Bean
+//    public RedisMessageListenerContainer redisMessageListenerContainer(JedisConnectionFactory redisConnectionFactory) {
+//        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+//        container.setConnectionFactory(redisConnectionFactory);
+////        container.addMessageListener(employerKeyExpirationListener, new PatternTopic("__keyevent@*__:expired:employer:*"));
+//        return container;
+//    }
+
+//    @Bean
+//    public MessageListenerAdapter messageListener(MessageListener messageListener) {
+//        return new MessageListenerAdapter(messageListener);
+//    }
+//
+//    @Bean
+//    public ChannelTopic topic() {
+//        return new ChannelTopic("__keyevent@0__:expired");
+//    }
+//
+//    @Bean
+//    public RedisMessageListenerContainer redisContainer(JedisConnectionFactory redisConnectionFactory,
+//                                                        MessageListenerAdapter messageListenerAdapter,
+//                                                        ChannelTopic topic) {
+//        final RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+//        container.setConnectionFactory(redisConnectionFactory);
+//        container.addMessageListener(messageListenerAdapter, topic);
+//        return container;
+//    }
 
 //    @Bean
 //    public WBSService<?> wbsService(
